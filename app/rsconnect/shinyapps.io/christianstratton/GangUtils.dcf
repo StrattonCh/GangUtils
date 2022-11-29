@@ -1,0 +1,13 @@
+name: GangUtils
+title: GangUtils
+username:
+account: christianstratton
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7756720
+bundleId: 6566105
+url: https://christianstratton.shinyapps.io/GangUtils/
+when: 1669702026.21631
+lastSyncTime: 1669702026.21632
+asMultiple: FALSE
+asStatic: FALSE
