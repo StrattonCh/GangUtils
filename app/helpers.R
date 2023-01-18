@@ -3,7 +3,7 @@
 # functions to save and load persistent data to and from dropbox
 # shamelessly copied from https://shiny.rstudio.com/articles/persistent-data-storage.html
 # authentication with rdrop2
-# token <- drop_auth()
+token <- drop_auth()
 # saveRDS(token, "droptoken.rds")
 # Upload droptoken to your server
 # ******** WARNING ********
@@ -14,9 +14,8 @@
 # ******** WARNING ********
 # read it back with readRDS
 # Then pass the token to each drop_ function
-# drop_acc(dtoken = token)
-
 token <- readRDS("droptoken.rds")
+drop_acc(dtoken = token)
 outputDir <- "trivia_winnings"
 saveData <- function(data) {
   data <- t(data)
