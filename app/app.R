@@ -5,9 +5,18 @@ library(tidyverse)
 library(shinydashboard)
 library(shinyMobile)
 library(DT)
+library(rdrop2)
 
-# packs <- c("shinyjs", "shiny", "tidyverse", "shinydashboard", "DT")
-# sapply(packs, require, character.only = TRUE)
+# a couple things for persistent storage:
+
+# article on persistent remote data storage for shiny: 
+## https://shiny.rstudio.com/articles/persistent-data-storage.html
+
+# google account that owns dropbox
+## user: lekfastclub@gmail.com
+## pass: lefastclub69!
+
+source("helpers.R")
 
 ####################
 ### Login screen ###
@@ -156,6 +165,9 @@ server <- function(input, output, session) {
     }
   })
   
+  # define reactive values, to be carried across multiple calls to renderUI
+  total_bill <- reactiveValues(total = 0)
+  
   # bill splitter tab
   output$bill_splitter <- renderUI({
     list(
@@ -169,14 +181,12 @@ server <- function(input, output, session) {
               label = "Gang members present",
               choices = sort(
                 c(
-                  "Christian",
-                  "Ian",
-                  "John", 
-                  "Meaghan",
-                  "Samidha"
+                  "Meaghan/Christian",
+                  "Samidha/Ian",
+                  "John"
                 )
               ),
-              selected = c("Christian", "Ian", "John", "Meaghan", "Samidha")
+              selected = c("Meaghan/Christian", "Samidha/Ian", "John")
             ),
             h3("Individual bills"),
             uiOutput("numericinputs"),
@@ -191,6 +201,14 @@ server <- function(input, output, session) {
           wellPanel(
             h3("Tabular summaries"),
             dataTableOutput("split_table")
+          ),
+          wellPanel(
+            h3("Data entry"),
+            uiOutput("persistentDataEntryUI")
+          ), 
+          wellPanel(
+            h3("Historical winnings"),
+            DT::dataTableOutput("pde_historical")
           )
         )
       )
@@ -202,20 +220,20 @@ server <- function(input, output, session) {
     ndx = 1
     
     # individual bills
-    if("Christian" %in% input$members){
+    if("Meaghan/Christian" %in% input$members){
       out[[ndx]] <- numericInput(
-        inputId = "christian_bill",
-        label = "Christian bill",
+        inputId = "meaghanchristian_bill",
+        label = "Meaghan/Christian bill",
         value = 10,
         min = 0
       )
       
       ndx = ndx + 1
     }
-    if("Ian" %in% input$members){
+    if("Samidha/Ian" %in% input$members){
       out[[ndx]] <- numericInput(
-        inputId = "ian_bill",
-        label = "Ian bill",
+        inputId = "samidhaian_bill",
+        label = "Samidha/Ian bill",
         value = 10,
         min = 0
       )
@@ -226,26 +244,6 @@ server <- function(input, output, session) {
       out[[ndx]] <- numericInput(
         inputId = "john_bill",
         label = "John bill",
-        value = 10,
-        min = 0
-      )
-      
-      ndx = ndx + 1
-    }
-    if("Meaghan" %in% input$members){
-      out[[ndx]] <- numericInput(
-        inputId = "meaghan_bill",
-        label = "Meaghan bill",
-        value = 10,
-        min = 0
-      )
-      
-      ndx = ndx + 1
-    }
-    if("Samidha" %in% input$members){
-      out[[ndx]] <- numericInput(
-        inputId = "samidha_bill",
-        label = "Samidha bill",
         value = 10,
         min = 0
       )
@@ -279,38 +277,30 @@ server <- function(input, output, session) {
   
   output$tip_raw <- renderUI({
     money = total_bill$total
-    if("Christian" %in% input$members){
-      money = money + input$christian_bill
+    if("Meaghan/Christian" %in% input$members){
+      money = money + input$meaghanchristian_bill
     }
-    if("Ian" %in% input$members){
-      money = money + input$ian_bill
+    if("Samidha/Ian" %in% input$members){
+      money = money + input$samidhaian_bill
     }
     if("John" %in% input$members){
       money = money + input$john_bill
-    }
-    if("Meaghan" %in% input$members){
-      money = money + input$meaghan_bill
-    }
-    if("Samidha" %in% input$members){
-      money = money + input$samidha_bill
     }
     
     text <- paste0("<b> (Raw tip: $", round(input$tip_prop * money, 2), ") </b>")
     HTML(text)
   })
-  
-  total_bill <- reactiveValues(total = 0)
-  
+
   output$split_table <- renderDataTable({
     req(input$tip_prop)
     out <- list()
     ndx = 1
     
-    if("Christian" %in% input$members){
+    if("Meaghan/Christian" %in% input$members){
       out[[ndx]] <- tibble(
-        Member = "Christian",
-        Bill = input$christian_bill, 
-        `Tip split` = input$tip_prop * input$christian_bill,
+        Member = "Meaghan/Christian",
+        Bill = input$meaghanchristian_bill, 
+        `Tip split` = input$tip_prop * input$meaghanchristian_bill,
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
@@ -320,11 +310,11 @@ server <- function(input, output, session) {
       ndx = ndx + 1
     }
     
-    if("Ian" %in% input$members){
+    if("Samidha/Ian" %in% input$members){
       out[[ndx]] <- tibble(
-        Member = "Ian",
-        Bill = input$ian_bill, 
-        `Tip split` = input$tip_prop * input$ian_bill,
+        Member = "Samidha/Ian",
+        Bill = input$samidhaian_bill, 
+        `Tip split` = input$tip_prop * input$samidhaian_bill,
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
@@ -339,34 +329,6 @@ server <- function(input, output, session) {
         Member = "John",
         Bill = input$john_bill, 
         `Tip split` = input$tip_prop * input$john_bill,
-        `Awarded winnings` = input$winnings / length(input$members)
-      ) %>%
-        mutate(
-          Total = -1 * (Bill + `Tip split` - `Awarded winnings`)
-        )
-      
-      ndx = ndx + 1
-    }
-    
-    if("Meaghan" %in% input$members){
-      out[[ndx]] <- tibble(
-        Member = "Meaghan",
-        Bill = input$meaghan_bill, 
-        `Tip split` = input$tip_prop * input$meaghan_bill,
-        `Awarded winnings` = input$winnings / length(input$members)
-      ) %>%
-        mutate(
-          Total = -1 * (Bill + `Tip split` - `Awarded winnings`)
-        )
-      
-      ndx = ndx + 1
-    }
-    
-    if("Samidha" %in% input$members){
-      out[[ndx]] <- tibble(
-        Member = "Samidha",
-        Bill = input$samidha_bill, 
-        `Tip split` = input$tip_prop * input$samidha_bill,
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
@@ -392,6 +354,74 @@ server <- function(input, output, session) {
         fontWeight = "bold"
       )
   })
+  
+  
+  # persistent data storage stuff
+  formData <- reactive({
+    data <- sapply(
+      c("pde_date", "pde_location", "pde_winnings"), 
+      function(x) input[[x]]
+    )
+    data
+  })
+  
+  output$persistentDataEntryUI <- renderUI({
+    list(
+      fluidRow(
+        column(
+          3,
+          textInput(
+            inputId = "pde_date",
+            label = "Date",
+            value = get_date_MST()
+          )
+        ),
+        column(
+          3, 
+          textInput(
+            inputId = "pde_location",
+            label = "Location", 
+            value = ifelse(
+              lubridate::wday(get_date_MST()) == 2,
+              "Bacchus", ifelse(
+                lubridate::wday(get_date_MST()) == 3, "Colombos",
+                ""
+              )
+            )
+          )
+        ),
+        column(
+          3,
+          numericInput(
+            inputId = "pde_winnings",
+            label = "Winnings",
+            value = input$winnings
+          )
+        ),
+        column(
+          3,
+          actionButton(
+            inputId = "pde_submit",
+            label = "Submit"
+          )
+        )
+      )
+    )
+    
+  })
+  
+  observeEvent(input$pde_submit, {
+    saveData(formData())
+  })
+  
+  
+  output$pde_historical <- DT::renderDataTable({
+    input$pde_submit
+    loadData() %>% rename(Date = pde_date, Location = pde_location, Winnings = pde_winnings)
+  })   
+  
+  
+  
 }
 
 shinyApp(ui = ui, server = server)
