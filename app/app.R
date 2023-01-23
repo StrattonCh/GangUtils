@@ -14,7 +14,7 @@ library(rdrop2)
 
 # google account that owns dropbox
 ## user: lekfastclub@gmail.com
-## pass: lefastclub69!
+## pass: lekfastclub69!
 
 source("helpers.R")
 
