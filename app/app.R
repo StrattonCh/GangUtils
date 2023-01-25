@@ -384,8 +384,9 @@ server <- function(input, output, session) {
             value = ifelse(
               lubridate::wday(get_date_MST()) == 2,
               "Bacchus", ifelse(
-                lubridate::wday(get_date_MST()) == 3, "Colombos",
-                ""
+                lubridate::wday(get_date_MST()) == 3, "Colombos", ifelse(
+                  lubridate::wday(get_date_MST()) == 4, "Shine", ""
+                )
               )
             )
           )
