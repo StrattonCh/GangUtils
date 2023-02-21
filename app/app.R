@@ -190,10 +190,13 @@ server <- function(input, output, session) {
             ),
             h3("Individual bills"),
             uiOutput("numericinputs"),
+            uiOutput("bill_totalUI"),
             h3("Modifiers"),
             uiOutput("winnings"),
-            uiOutput("tip_propUI"),
-            uiOutput("tip_raw") 
+            # uiOutput("tip_propUI"),
+            uiOutput("tip_selectUI"),
+            conditionalPanel("input.tip_type == `Proportion`",
+              uiOutput("tip_raw"))
           )
         ),
         column(
@@ -263,15 +266,54 @@ server <- function(input, output, session) {
     )
   })
   
-  output$tip_propUI <- renderUI({
+  # output$tip_propUI <- renderUI({
+  #   list(
+  #     numericInput(
+  #       inputId = "tip_prop",
+  #       label = "Tip proportion",
+  #       # label = NULL,
+  #       value = .2,
+  #       min = 0
+  #     )
+  #   )
+  # })
+  
+  output$bill_totalUI <- renderUI({
+    total.bill = total_bill$total
+    if("Meaghan/Christian" %in% input$members){
+      total.bill = total.bill + input$meaghanchristian_bill
+    }
+    if("Samidha/Ian" %in% input$members){
+      total.bill = total.bill + input$samidhaian_bill
+    }
+    if("John" %in% input$members){
+      total.bill = total.bill + input$john_bill
+    }
+    
+    text <- paste0("<b> (Total Bill: $", round(total.bill, 2), ") </b>")
+    HTML(text)
+    # HTML(input$tip_type)
+  })
+  
+  output$tip_selectUI <- renderUI({
     list(
-      numericInput(
-        inputId = "tip_prop",
-        label = "Tip proportion",
-        # label = NULL,
-        value = .2,
-        min = 0
-      )
+      selectInput("tip_type", "Tip Option",
+                  choices = c("Proportion", "Raw")),
+      conditionalPanel(condition = "input.tip_type == `Proportion`",
+           tip.disp <- numericInput(
+             inputId = "tip_prop",
+             label = "Tip Proportion",
+             value = 0.2,
+             min = 0,
+             max = 1)
+           ),
+       conditionalPanel(condition = "input.tip_type == `Raw`",
+                        tip.disp <- numericInput(
+                          inputId = "tip_amount",
+                          label = "Tip Amount",
+                          value = 10,
+                          min = 0)
+          )
     )
   })
   
@@ -289,6 +331,7 @@ server <- function(input, output, session) {
     
     text <- paste0("<b> (Raw tip: $", round(input$tip_prop * money, 2), ") </b>")
     HTML(text)
+    # HTML(total.bill)
   })
 
   output$split_table <- renderDataTable({
@@ -296,11 +339,24 @@ server <- function(input, output, session) {
     out <- list()
     ndx = 1
     
+    total.bill = total_bill$total
+    if("Meaghan/Christian" %in% input$members){
+      total.bill = total.bill + input$meaghanchristian_bill
+    }
+    if("Samidha/Ian" %in% input$members){
+      total.bill = total.bill + input$samidhaian_bill
+    }
+    if("John" %in% input$members){
+      total.bill = total.bill + input$john_bill
+    }
+    
     if("Meaghan/Christian" %in% input$members){
       out[[ndx]] <- tibble(
         Member = "Meaghan/Christian",
         Bill = input$meaghanchristian_bill, 
-        `Tip split` = input$tip_prop * input$meaghanchristian_bill,
+        `Tip split` = ifelse(input$tip_type == "Proportion",
+                             input$tip_prop * input$meaghanchristian_bill,
+                             input$tip_amount * input$meaghanchristian_bill / total.bill),
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
@@ -314,7 +370,9 @@ server <- function(input, output, session) {
       out[[ndx]] <- tibble(
         Member = "Samidha/Ian",
         Bill = input$samidhaian_bill, 
-        `Tip split` = input$tip_prop * input$samidhaian_bill,
+        `Tip split` = ifelse(input$tip_type == "Proportion",
+                             input$tip_prop * input$samidhaian_bill,
+                             input$tip_amount * input$samidhaian_bill / total.bill),
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
@@ -328,7 +386,9 @@ server <- function(input, output, session) {
       out[[ndx]] <- tibble(
         Member = "John",
         Bill = input$john_bill, 
-        `Tip split` = input$tip_prop * input$john_bill,
+        `Tip split` = ifelse(input$tip_type == "Proportion",
+                             input$tip_prop * input$john_bill,
+                             input$tip_amount * input$john_bill / total.bill),
         `Awarded winnings` = input$winnings / length(input$members)
       ) %>%
         mutate(
